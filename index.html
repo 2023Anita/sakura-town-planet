@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="description" content="さくら惑星 — a tiny spherical anime sakura town you can walk around. Procedural Three.js demo." />
+    <title>さくら惑星 · Sakura Planet</title>
+  </head>
+  <body>
+    <canvas id="scene"></canvas>
+
+    <div id="loader">
+      <div class="loader-card">
+        <div class="loader-petal"></div>
+        <div class="loader-title">さくら惑星</div>
+        <div class="loader-sub" id="loader-msg">惑星を生成中… Growing the planet</div>
+        <div class="loader-bar"><div id="loader-fill"></div></div>
+      </div>
+    </div>
+
+    <div id="hud" class="hidden">
+      <header class="title-card">
+        <div class="title-jp">さくら惑星</div>
+        <div class="title-en">Sakura Planet · a walkable mini-world</div>
+      </header>
+
+      <nav class="zones" id="zones" aria-label="Travel to a zone"></nav>
+
+      <div class="top-right">
+        <button id="btn-mode" class="pill" title="Toggle walk / orbit (Tab)">🪐 Orbit view</button>
+        <button id="btn-quality" class="pill" title="Toggle quality (Q)">High</button>
+        <span id="fps" class="pill mono">-- fps</span>
+      </div>
+
+      <div id="toast" class="toast"></div>
+
+      <aside class="help" id="help">
+        <div class="help-head">
+          <strong>Controls</strong>
+          <button id="btn-help" class="help-toggle" aria-label="Hide controls">–</button>
+        </div>
+        <div class="help-body">
+          <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk on the planet</div>
+          <div><kbd>Shift</kbd> run · <kbd>Space</kbd> jump</div>
+          <div><kbd>Drag</kbd> look around · <kbd>Wheel</kbd> zoom</div>
+          <div><kbd>Tab</kbd> walk ⇄ orbit (zoom out to space)</div>
+          <div>Orbit: <kbd>Double-click</kbd> the planet to land</div>
+          <div><kbd>1</kbd>–<kbd>6</kbd> jump to a zone · <kbd>Q</kbd> quality</div>
+        </div>
+      </aside>
+
+      <div id="labels"></div>
+
+      <div id="touch" class="touch">
+        <div id="stick" class="stick"><div id="stick-knob" class="stick-knob"></div></div>
+        <button id="btn-jump" class="touch-btn">跳</button>
+      </div>
+    </div>
+
+    <div id="fatal" class="hidden">
+      <div class="loader-card">
+        <div class="loader-title">ごめんなさい</div>
+        <div class="loader-sub" id="fatal-msg">WebGL is not available in this browser.</div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
