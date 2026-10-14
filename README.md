@@ -1,5 +1,10 @@
 # さくら惑星 · Sakura Planet
 
+▶ **在线试玩 / Live demo:** https://raw.githack.com/2023Anita/sakura-town-planet/main/play/index.html
+
+> 根目录的 `index.html` 是 Vite 源码入口，需要 `npm run dev` 才能运行；直接在线打开请用 `play/`（预构建版本）。
+> The root `index.html` is the Vite source entry and only runs via `npm run dev`; for a static, no-install demo open `play/index.html` (prebuilt bundle, regenerate with `npm run build && rm -rf play && cp -r dist play`).
+
 A tiny **spherical** planet with an anime-style Japanese sakura town on its surface, built with **Vite + Three.js**. Walk the curved streets with real radial gravity, or zoom out to space and watch the whole mini-world turn.
 
 Everything is generated from code: geometry, terrain, Japanese signs, petal and ground textures. There are no external GLB, HDRI or texture packs.
