@@ -1,0 +1,13 @@
+{
+  "name": "sakura-town-planet",
+  "version": "1.0.0",
+  "description": "A fully procedural, single-file Three.js anime sakura town on a tiny walkable planet.",
+  "type": "module",
+  "scripts": {
+    "start": "node serve.mjs",
+    "dev": "node serve.mjs"
+  },
+  "keywords": ["threejs", "procedural", "sakura", "anime", "webgl", "single-file", "vibe-coding"],
+  "license": "MIT",
+  "engines": { "node": ">=18" }
+}
