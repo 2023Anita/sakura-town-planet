@@ -187,7 +187,7 @@ function buildTrain(c: Ctx, Mc: THREE.Matrix4) {
       const m = Mc.clone().multiply(new THREE.Matrix4().makeTranslation(s * 0.72, FL + 1.8, z)).multiply(new THREE.Matrix4().makeRotationY(Math.PI / 2));
       b.add('toon', ring, m, '#f5f5f5');
     }
-    b.box(Mc, s * 0.45, FL + 2.48, 0, 0.16, 0.04, L - 0.6, '#f4f8ff', { key: 'glow', glow: 1.4 });
+    b.box(Mc, s * 0.45, FL + 2.48, 0, 0.16, 0.04, L - 0.6, '#f4f8ff', { key: 'glow', glow: 1.1 });
   }
   const ads = [
     atlas.sign('春の新生活フェア', 1.2, 0.36, { bg: '#ffe3ee', fg: '#c2185b', sub: 'ひばりが丘商店街 3/20〜4/10' }),
@@ -227,11 +227,11 @@ function buildTrain(c: Ctx, Mc: THREE.Matrix4) {
   });
   for (const d of doors) b.quad(Mc, HW - 0.05, FL + 2.25, d, 1.1, 0.21, route, { key: 'signs', ry: -Math.PI / 2 });
   for (let z = -5; z <= 5; z += 2.5) {
-    b.board(Mc, 0, FL + 1.95, z, 0.8, 0.24, ads[(k++ + 1) % ads.length], { depth: 0.01, frame: '#ffffff' });
+    b.board(Mc, 0, FL + 2.3, z, 0.8, 0.24, ads[(k++ + 1) % ads.length], { depth: 0.01, frame: '#ffffff' });
   }
 
   // Walkable floor + interior marker so the camera tucks in
   for (let z = -L / 2; z < L / 2; z += 2) c.phys.floor(Mc, 0, z + 1, HW, 1.0, FL);
   c.phys.interior(Mc, 0, 0, HW, L / 2);
-  c.lights.add(wp(Mc, 0, FL + 2.2, 0), '#eef4ff', 3, 7);
+  c.lights.add(wp(Mc, 0, FL + 1.6, 0), '#eef4ff', 1.6, 6);
 }

@@ -35,7 +35,7 @@ export class GlowPoints {
           vec4 mv = modelViewMatrix * vec4(position, 1.0);
           float f = phase < 0.0 ? 1.0 : 0.85 + 0.15 * sin(uTime * 7.0 + phase) * sin(uTime * 3.1 + phase * 1.7);
           vColor = color * f;
-          gl_PointSize = clamp(size * uScale / -mv.z, 0.0, 256.0);
+          gl_PointSize = clamp(size * uScale / -mv.z, 0.0, 140.0);
           gl_Position = projectionMatrix * mv;
         }`,
       fragmentShader: /* glsl */ `
@@ -97,7 +97,7 @@ export class LightPool {
       l.position.copy(e.s.p);
       l.color.copy(e.s.color);
       l.distance = e.s.distance;
-      l.intensity = e.s.intensity;
+      l.intensity = e.s.intensity * 0.55;
     });
   }
 }

@@ -65,6 +65,27 @@ async function main() {
   });
   scene.add(world.root);
 
+  // Horizon culling: on a small planet anything past the horizon is hidden by the planet itself.
+  const chunks: { obj: THREE.Object3D; dir: THREE.Vector3; ang: number }[] = [];
+  world.root.traverse((o) => {
+    const m = o as THREE.Mesh;
+    if (!m.isMesh || m === world.planet || m.name === 'grass') return;
+    const bs = (m as THREE.InstancedMesh).isInstancedMesh ? (m as THREE.InstancedMesh).boundingSphere : m.geometry.boundingSphere;
+    if (!bs) return;
+    const c = bs.center.clone().applyMatrix4(m.matrixWorld);
+    if (c.length() < R * 0.3) return;
+    chunks.push({ obj: m, dir: c.clone().normalize(), ang: bs.radius / R });
+  });
+  function cullHorizon() {
+    const camR = camera.position.length();
+    const camDir = camera.position.clone().normalize();
+    const ha = Math.acos(Math.min(1, R / camR)) + Math.acos(R / (R + 16));
+    for (const ch of chunks) {
+      const a = Math.acos(THREE.MathUtils.clamp(ch.dir.dot(camDir), -1, 1));
+      ch.obj.visible = a - ch.ang < ha;
+    }
+  }
+
   const { gradient } = { gradient: (world.planet.material as THREE.MeshToonMaterial).gradientMap! };
   const player = new Player(gradient, world.phys);
   scene.add(player.model);
@@ -75,7 +96,7 @@ async function main() {
   const rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 });
   const composer = new EffectComposer(renderer, rt);
   composer.addPass(new RenderPass(scene, camera));
-  const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.55, 0.55, 0.92);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.45, 0.5, 0.92);
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
 
@@ -105,9 +126,9 @@ async function main() {
   function walkPose(outPos: THREE.Vector3, outQuat: THREE.Quaternion) {
     const up = player.up;
     const interior = world.phys.isInterior(player.pos);
-    const d = interior ? Math.min(dist, 2.3) : dist;
-    const pt = interior ? Math.min(pitch, 0.25) : pitch;
-    const target = player.pos.clone().addScaledVector(up, interior ? 1.35 : 1.25);
+    const d = interior ? Math.min(dist, 2.4) : dist;
+    const pt = interior ? Math.min(pitch, 0.1) : pitch;
+    const target = player.pos.clone().addScaledVector(up, interior ? 1.1 : 1.25);
     outPos.copy(target).addScaledVector(up, Math.sin(pt) * d + 0.25).addScaledVector(camFwd, -Math.cos(pt) * d);
     const dir = outPos.clone().normalize();
     const minR = R + terrainHeight(dir) + 0.6;
@@ -132,7 +153,7 @@ async function main() {
     $('btn-mode').textContent = to === 'walk' ? '🪐 Orbit view' : '🚶 Walk here';
   }
 
-  function goToZone(z: ZoneMeta) {
+  function goToZone(z: ZoneMeta, instant = false) {
     const f = z.frame;
     const p = f.point(z.spawn.x, z.spawn.z, 0);
     const local = f.sub(z.spawn.x, z.spawn.z);
@@ -143,6 +164,11 @@ async function main() {
     dist = 6.5;
     setMode('walk');
     lastZone = null;
+    if (instant) {
+      transition = null;
+      walkPose(camera.position, camera.quaternion);
+      camUp.copy(player.up);
+    }
   }
 
   // ---- HUD ----
@@ -340,8 +366,9 @@ async function main() {
   setTimeout(() => loader.classList.add('hidden'), 900);
 
   // ---- loop ----
-  const timer = new THREE.Timer();
-  timer.connect(document);
+  const fixedDt = Number(params.get('fixedDt') ?? 0);
+  let lastNow = performance.now();
+  let elapsed = 0;
   const lastPlayer = player.pos.clone();
   const moved = new THREE.Vector3();
   let fpsFrames = 0, fpsTime = 0, slowSeconds = 0;
@@ -349,9 +376,12 @@ async function main() {
   const proj = new THREE.Vector3();
 
   function frame() {
-    timer.update();
-    const dt = Math.min(timer.getDelta(), 0.05);
-    const t = timer.getElapsed();
+    const now = performance.now();
+    const realDt = (now - lastNow) / 1000;
+    const dt = fixedDt > 0 ? fixedDt : Math.min(realDt, 0.05);
+    lastNow = now;
+    elapsed += dt;
+    const t = elapsed;
     idle += dt;
 
     // movement
@@ -400,7 +430,7 @@ async function main() {
       const s = 1 - Math.exp(-dt * 12);
       camera.position.lerp(tmpP, s);
       camUp.lerp(player.up, s).normalize();
-      const target = player.pos.clone().addScaledVector(player.up, world.phys.isInterior(player.pos) ? 1.35 : 1.25);
+      const target = player.pos.clone().addScaledVector(player.up, world.phys.isInterior(player.pos) ? 1.1 : 1.25);
       camera.up.copy(camUp);
       camera.lookAt(target);
     } else {
@@ -484,15 +514,16 @@ async function main() {
       el.style.top = `${((1 - proj.y) / 2) * innerHeight}px`;
     });
 
+    cullHorizon();
     composer.render(dt);
 
     // fps + auto quality
     fpsFrames++;
-    fpsTime += dt;
+    fpsTime += realDt;
     if (fpsTime >= 0.5) {
       const fps = fpsFrames / fpsTime;
       $('fps').textContent = `${Math.round(fps)} fps`;
-      if (quality === 'high' && fps < 26) slowSeconds += fpsTime;
+      if (quality === 'high' && fps < 26 && fixedDt === 0) slowSeconds += fpsTime;
       else slowSeconds = 0;
       if (slowSeconds > 4) {
         quality = 'low';
@@ -512,6 +543,9 @@ async function main() {
     sakura: {
       goto: (i: number) => goToZone(world.zones[i]),
       orbit: () => setMode('orbit'),
+      info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }),
+      state: () => ({ mode, t: transition?.t ?? null, elapsed, cam: camera.position.toArray().map((v) => +v.toFixed(1)), player: player.pos.toArray().map((v) => +v.toFixed(1)) }),
+      tp: (i: number, x: number, z: number, yaw: number) => goToZone({ ...world.zones[i], spawn: { x, z, yaw } }, true),
       look: (yaw: number, p: number, d: number) => {
         camFwd.applyAxisAngle(player.up, yaw);
         pitch = p;

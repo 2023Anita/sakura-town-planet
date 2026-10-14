@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { mulberry32 } from './noise';
+import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { mulberry32, noise3 } from './noise';
 import type { Builder } from './builder';
 import type { Physics } from './physics';
 
@@ -53,17 +53,23 @@ function canopyGeo(rnd: () => number, kind: Kind) {
     }
     return mergeGeometries(parts)!;
   }
-  const blobs = kind === 'sakura' ? 11 : 7;
+  const blobs = kind === 'sakura' ? 8 : 6;
   for (let i = 0; i < blobs; i++) {
     const a = (i / blobs) * Math.PI * 2 + rnd();
     const rr = i === 0 ? 0 : 1.1 + rnd() * 0.9;
-    const s = (kind === 'sakura' ? 1.05 : 1.0) + rnd() * 0.6;
-    const g = new THREE.IcosahedronGeometry(s, 1);
+    const s = (kind === 'sakura' ? 1.2 : 1.05) + rnd() * 0.6;
+    const base = new THREE.IcosahedronGeometry(s, 1);
+    base.deleteAttribute('normal');
+    base.deleteAttribute('uv');
+    const g = mergeVertices(base);
     const pos = g.attributes.position as THREE.BufferAttribute;
+    const seed = rnd() * 100;
     for (let v = 0; v < pos.count; v++) {
-      const k = 1 + (rnd() - 0.5) * 0.25;
-      pos.setXYZ(v, pos.getX(v) * k, pos.getY(v) * k * 0.8, pos.getZ(v) * k);
+      const x = pos.getX(v), y = pos.getY(v), z = pos.getZ(v);
+      const k = 1 + (noise3(x * 1.7 + seed, y * 1.7, z * 1.7) - 0.5) * 0.45;
+      pos.setXYZ(v, x * k, y * k * 0.8, z * k);
     }
+    g.computeVertexNormals();
     const y = 3.4 + rnd() * 1.1 + (i === 0 ? 0.9 : 0);
     g.translate(Math.cos(a) * rr, y, Math.sin(a) * rr);
     const color = kind === 'sakura'
@@ -71,9 +77,7 @@ function canopyGeo(rnd: () => number, kind: Kind) {
       : new THREE.Color().setHSL(0.26 + rnd() * 0.05, 0.42, 0.42 + rnd() * 0.08);
     parts.push(colored(g, color, 0.07, rnd));
   }
-  const merged = mergeGeometries(parts)!;
-  merged.computeVertexNormals();
-  return merged;
+  return mergeGeometries(parts)!;
 }
 
 /** All trees on the planet: one InstancedMesh per kind and part. */
@@ -103,17 +107,34 @@ export class Trees {
     }
   }
 
+  /** One InstancedMesh per tree kind per sphere cell, so cells past the horizon can be culled. */
   build(gradient: THREE.Texture) {
     const group = new THREE.Group();
     const mat = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: gradient });
+    // Petal canopies scatter light: lift their shadowed side so backlit sakura stay pink.
+    mat.onBeforeCompile = (sh) => {
+      sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n totalEmissiveRadiance += vColor.rgb * 0.2;');
+    };
     const rnd = mulberry32(5);
+    const p = new THREE.Vector3();
+    const tint = new THREE.Color();
     for (const kind of Object.keys(this.mats) as Kind[]) {
       const list = this.mats[kind];
       if (!list.length) continue;
-      for (const geo of [trunkGeo(rnd, kind), canopyGeo(rnd, kind)]) {
-        const mesh = new THREE.InstancedMesh(geo, mat, list.length);
-        const tint = new THREE.Color();
-        list.forEach((m, i) => {
+      const geo = mergeGeometries([trunkGeo(rnd, kind), canopyGeo(rnd, kind)])!;
+      const cells = new Map<string, THREE.Matrix4[]>();
+      for (const m of list) {
+        p.setFromMatrixPosition(m).normalize();
+        const lat = Math.floor((Math.asin(p.y) / Math.PI + 0.5) * 8);
+        const lon = Math.floor(((Math.atan2(p.x, p.z) / Math.PI + 1) / 2) * 16);
+        const k = `${lat}:${lon}`;
+        let c = cells.get(k);
+        if (!c) cells.set(k, (c = []));
+        c.push(m);
+      }
+      for (const [k, ms] of cells) {
+        const mesh = new THREE.InstancedMesh(geo, mat, ms.length);
+        ms.forEach((m, i) => {
           mesh.setMatrixAt(i, m);
           tint.setHSL(0, 0, 0.9 + rnd() * 0.12);
           mesh.setColorAt(i, tint);
@@ -121,6 +142,7 @@ export class Trees {
         mesh.castShadow = true;
         mesh.receiveShadow = true;
         mesh.computeBoundingSphere();
+        mesh.name = `trees:${kind}:${k}`;
         group.add(mesh);
       }
     }
