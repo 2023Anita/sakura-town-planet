@@ -92,6 +92,10 @@ src/
 
 Japanese text is drawn with your system fonts (Hiragino, Yu Gothic or Noto Sans/Serif JP, with fallbacks).
 
+## Earlier version
+
+The repository's first commit was a different, single-HTML-file take on the same idea. It is kept intact in [`legacy/single-file/`](legacy/single-file/). With `npm run dev` running, it is served at `http://localhost:41731/legacy/single-file/`.
+
 ## Credits
 
 - **Inspiration:** the sakura-town mood in [this post by @NFT_Chen](https://x.com/NFT_Chen/status/2110146921646223867). This project is an original, independent re-imagining. It contains no assets from that work, and all geometry, textures and code here are procedural and original.
